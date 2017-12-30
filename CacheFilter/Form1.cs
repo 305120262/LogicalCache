@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using System.Text.RegularExpressions;
 using System.IO;
 using ImageProcessor;
+using StackExchange.Redis;
 
 //参考 https://github.com/Esri/raster-tiles-compactcache/blob/master/CompactCacheV2.md
 
@@ -18,13 +19,15 @@ namespace CacheFilter
     enum TileCheckMode
     {
         Whole,
-        Strip
+        Strip,
+        Exist
     }
     public partial class Form1 : Form
     {
         const int BUNDLX_MAXIDX = 128;
         const int COMPACT_CACHE_HEADER_LENGTH = 64;
         const String BUNDLE_EXT = ".bundle";
+        ConnectionMultiplexer redisConnection;
 
         public Form1()
         {
@@ -33,37 +36,44 @@ namespace CacheFilter
 
         private void button1_Click(object sender, EventArgs e)
         {
-            if (x_tbx.Text != "" && y_tbx.Text != "")
+            int level=0, row=0, col=0;
+            if (scale_tbx.Text!="" && x_tbx.Text != "" && y_tbx.Text != "")
             {
                 CacheInfo cache = new CacheInfo();
                 cache.LoadFromSchemaFile(this.cacheRoot_tbx.Text + @"\conf.xml");
                 TileInfo tile = cache.GetTileInfoFromXY(double.Parse(scale_tbx.Text), double.Parse(x_tbx.Text), double.Parse(y_tbx.Text));
-
-                string bundleFilePath = BuildBundleFilePath(cacheRoot_tbx.Text, tile.Level, tile.Row, tile.Column);
-                byte[] data = GetTileBytes(bundleFilePath, tile.Level, tile.Row, tile.Column);
-                SaveFileDialog dlg = new SaveFileDialog();
-                dlg.Filter = "*.jpeg|jpeg";
-                if (dlg.ShowDialog() == DialogResult.OK)
-                {
-                    SaveImage(data, dlg.FileName);
-                }
+                level = tile.Level;
+                row = tile.Row;
+                col = tile.Column;
+            }
+            else if(level_tbx.Text!="" && row_tbx.Text!="" && column_tbx.Text!="")
+            {
+                level = int.Parse(level_tbx.Text);
+                row = int.Parse(row_tbx.Text);
+                col = int.Parse(column_tbx.Text);
             }
             else if (tileurl_tbx.Text != "")
             {
                 Match match = Regex.Match(tileurl_tbx.Text, @"\d+\/\d+\/\d+$");
                 string[] components = match.Value.Split('/');
                 int[] components_int = Array.ConvertAll<string, int>(components, new Converter<string, int>(Str2int));
-                int level = components_int[0];
-                int row = components_int[1];
-                int col = components_int[2];
-                string bundleFilePath = BuildBundleFilePath(cacheRoot_tbx.Text, level, row, col);
-                byte[] data = GetTileBytes(bundleFilePath, level, row, col);
-                SaveFileDialog dlg = new SaveFileDialog();
-                dlg.Filter = "*.jpeg|jpeg";
-                if (dlg.ShowDialog() == DialogResult.OK)
-                {
-                    SaveImage(data, dlg.FileName);
-                }
+                level = components_int[0];
+                row = components_int[1];
+                col = components_int[2];
+            }
+            string bundleFilePath = BuildBundleFilePath(cacheRoot_tbx.Text, level, row, col);
+            byte[] data = GetTileBytes(bundleFilePath, level, row, col);
+            if (data == null)
+            {
+                MessageBox.Show("Tile Not Exist!");
+                return;
+            }
+            //Save to file
+            SaveFileDialog dlg = new SaveFileDialog();
+            dlg.Filter = "*.jpeg|jpeg";
+            if (dlg.ShowDialog() == DialogResult.OK)
+            {
+                SaveImage(data, dlg.FileName);
             }
 
         }
@@ -177,13 +187,37 @@ namespace CacheFilter
         }
 
         //To-do
-        private void SaveCacheBundle(byte[] data, string cachapath)
+        private void ReplaceBundleTiles(Object paras)
         {
-            using (MemoryStream stream = new MemoryStream(data))
+            var p = paras as ReplaceBundleTilesParameters;
+            using (FileStream dest = File.OpenWrite(p.destBundle))
             {
+                using (FileStream src = File.OpenRead(p.scrBundle))
+                {
+                    BinaryReader reader = new BinaryReader(src, ASCIIEncoding.ASCII, true);
+                    for (int r = 0; r < 128; r++)
+                    {
+                        for (int c = 0; c < 128; c++)
+                        {
+                            int index = r * 128 + c;
+                            src.Seek((index * 8) + COMPACT_CACHE_HEADER_LENGTH, SeekOrigin.Begin);
 
+                            byte[] offsetAndSize = new byte[8];
+                            reader.Read(offsetAndSize, 0, 8);
+
+                            byte[] offsetBytes = new byte[8];
+                            Buffer.BlockCopy(offsetAndSize, 0, offsetBytes, 0, 5);
+                            long offset = BitConverter.ToUInt32(offsetBytes, 0);
+
+                            byte[] sizeBytes = new byte[4];
+                            Buffer.BlockCopy(offsetAndSize, 5, sizeBytes, 0, 3);
+                            int size = BitConverter.ToInt32(sizeBytes, 0);
+                        }
+                    }
+                }
             }
         }
+        private class ReplaceBundleTilesParameters { public string scrBundle; public string destBundle; public List<TileInfo> tiles; }
 
 
 
@@ -208,75 +242,108 @@ namespace CacheFilter
 
         }
 
+        private class CheckTilesParameters { public string bundle_path; public TileCheckMode check_mode; }
 
         private string CheckTiles(string pathToCacheRoot, TileCheckMode mode)
         {
             var zooms = Directory.EnumerateDirectories(pathToCacheRoot + @"\_alllayers\");
-            StringBuilder result = new StringBuilder();
+            List<Task<string>> checkList = new List<Task<string>>();
             foreach (string z in zooms)
             {
+                //if(this.level_tbx.Text!="")
+                //{
+                //    var zoom = int.Parse(z.Substring(z.Length-2,2));
+                //    var l = int.Parse(this.level_tbx.Text);
+                //    if(l!=zoom)
+                //    {
+                //        continue;
+                //    }
+                //}
+                
                 var files = Directory.EnumerateFiles(z);
                 foreach (string f in files)
                 {
-                    int level;
-                    int row;
-                    int column;
-                    GetLRCFromBundleFilePath(f, out level, out row, out column);
-
-                    using (FileStream source = File.OpenRead(f))
-                    {
-
-                        BinaryReader reader = new BinaryReader(source);
-                        for (int r = 0; r < 128; r++)
-                        {
-                            for (int c = 0; c < 128; c++)
-                            {
-                                int index = r * 128 + c;
-                                source.Seek((index * 8) + COMPACT_CACHE_HEADER_LENGTH, SeekOrigin.Begin);
-
-                                byte[] offsetAndSize = new byte[8];
-                                reader.Read(offsetAndSize, 0, 8);
-
-                                byte[] offsetBytes = new byte[8];
-                                Buffer.BlockCopy(offsetAndSize, 0, offsetBytes, 0, 5);
-                                long offset = BitConverter.ToUInt32(offsetBytes, 0);
-
-                                byte[] sizeBytes = new byte[4];
-                                Buffer.BlockCopy(offsetAndSize, 5, sizeBytes, 0, 3);
-                                int size = BitConverter.ToInt32(sizeBytes, 0);
-
-                                if (size == 0)
-                                    continue;
-
-                                source.Seek(offset, SeekOrigin.Begin);
-                                byte[] tile = new byte[size];
-                                reader.Read(tile, 0, size);
-                                if (mode == TileCheckMode.Whole)
-                                {
-                                    if (CheckBlank(tile))
-                                    {
-                                        result.AppendLine(String.Format("L{0}/R{1}/C{2}", level, row + r, column + c));
-                                    }
-                                }
-                                else if (mode == TileCheckMode.Strip)
-                                {
-                                    if (CheckStrip(tile))
-                                    {
-                                        result.AppendLine(String.Format("L{0}/R{1}/C{2}", level, row + r, column + c));
-                                    }
-                                }
-
-                            }
-                        }
-
-
-
-                    }
+                    var paras = new CheckTilesParameters { bundle_path = f, check_mode = mode };
+                    Task<string> CheckTileTask = Task.Factory.StartNew<string>((Object p) => CheckBundle(p),paras);
+                    checkList.Add(CheckTileTask);
+                 }
+            }
+            Task.WaitAll(checkList.ToArray());
+            StringBuilder result = new StringBuilder();
+            foreach(var t in checkList)
+            {
+                if(t.Result!="")
+                {
+                    result.AppendLine(t.Result);
                 }
             }
             return result.ToString();
         }
 
+
+        private string CheckBundle(Object paras)
+        {
+            var p = paras as CheckTilesParameters;
+            var f = p.bundle_path;
+            var mode = p.check_mode;
+            StringBuilder result = new StringBuilder();
+            int level;
+            int row;
+            int column;
+            GetLRCFromBundleFilePath(f, out level, out row, out column);
+            using (FileStream source = File.OpenRead(f))
+            {
+                BinaryReader reader = new BinaryReader(source, ASCIIEncoding.ASCII, true);
+                for (int r = 0; r < 128; r++)
+                {
+                    for (int c = 0; c < 128; c++)
+                    {
+                        int index = r * 128 + c;
+                        source.Seek((index * 8) + COMPACT_CACHE_HEADER_LENGTH, SeekOrigin.Begin);
+
+                        byte[] offsetAndSize = new byte[8];
+                        reader.Read(offsetAndSize, 0, 8);
+
+                        byte[] offsetBytes = new byte[8];
+                        Buffer.BlockCopy(offsetAndSize, 0, offsetBytes, 0, 5);
+                        long offset = BitConverter.ToUInt32(offsetBytes, 0);
+
+                        byte[] sizeBytes = new byte[4];
+                        Buffer.BlockCopy(offsetAndSize, 5, sizeBytes, 0, 3);
+                        int size = BitConverter.ToInt32(sizeBytes, 0);
+
+                        if (size == 0)
+                            continue;
+
+                        if (mode == TileCheckMode.Exist)
+                        {
+                            IDatabase redisClient = redisConnection.GetDatabase();
+                            string tileID = String.Format("L{0}/R{1}/C{2}", level, row + r, column + c);
+                            redisClient.SetAddAsync(this.cacheName_tbx.Text, tileID, CommandFlags.FireAndForget);
+                            continue;
+                        }
+                        source.Seek(offset, SeekOrigin.Begin);
+                        byte[] tile = new byte[size];
+                        reader.Read(tile, 0, size);
+                        if (mode == TileCheckMode.Whole)
+                        {
+                            if (CheckBlank(tile))
+                            {
+                                result.AppendLine(String.Format("L{0}/R{1}/C{2}", level, row + r, column + c));
+                            }
+                        }
+                        else if (mode == TileCheckMode.Strip)
+                        {
+                            if (CheckStrip(tile))
+                            {
+                                result.AppendLine(String.Format("L{0}/R{1}/C{2}", level, row + r, column + c));
+                            }
+                        }
+                    }
+                }
+            }
+            return result.ToString();
+        }
 
 
         private bool CheckBlank(byte[] data)
@@ -527,11 +594,16 @@ namespace CacheFilter
         {
             SaveFileDialog dlg = new SaveFileDialog();
             dlg.Filter = "*.txt|text";
+            dlg.DefaultExt = "txt";
+            dlg.FileName = "result.txt";
             if (dlg.ShowDialog() == DialogResult.OK)
             {
+                this.progressBar1.Style = ProgressBarStyle.Marquee;
+                
+                var result = CheckTiles(this.cacheRoot_tbx.Text, TileCheckMode.Whole);
+                this.progressBar1.Style = ProgressBarStyle.Blocks;
                 using (StreamWriter writer = new StreamWriter(dlg.FileName))
                 {
-                    var result = CheckTiles(this.cacheRoot_tbx.Text, TileCheckMode.Whole);
                     writer.WriteLine(result);
                     writer.Flush();
                     MessageBox.Show("Completed.");
@@ -545,11 +617,15 @@ namespace CacheFilter
         {
             SaveFileDialog dlg = new SaveFileDialog();
             dlg.Filter = "*.txt|text";
+            dlg.DefaultExt = "txt";
+            dlg.FileName = "result.txt";
             if (dlg.ShowDialog() == DialogResult.OK)
             {
+                this.progressBar1.Style = ProgressBarStyle.Marquee;
+                var result = CheckTiles(this.cacheRoot_tbx.Text, TileCheckMode.Strip);
+                this.progressBar1.Style = ProgressBarStyle.Blocks;
                 using (StreamWriter writer = new StreamWriter(dlg.FileName))
                 {
-                    var result = CheckTiles(this.cacheRoot_tbx.Text, TileCheckMode.Strip);
                     writer.WriteLine(result);
                     writer.Flush();
                     MessageBox.Show("Completed.");
@@ -558,5 +634,49 @@ namespace CacheFilter
             }
         }
 
+        private void button5_Click(object sender, EventArgs e)
+        {
+            int level = 0, row = 0, col = 0;
+            if (scale_tbx.Text != "" && x_tbx.Text != "" && y_tbx.Text != "")
+            {
+                CacheInfo cache = new CacheInfo();
+                cache.LoadFromSchemaFile(this.cacheRoot_tbx.Text + @"\conf.xml");
+                TileInfo tile = cache.GetTileInfoFromXY(double.Parse(scale_tbx.Text), double.Parse(x_tbx.Text), double.Parse(y_tbx.Text));
+                level = tile.Level;
+                row = tile.Row;
+                col = tile.Column;
+            }
+            else if (level_tbx.Text != "" && row_tbx.Text != "" && column_tbx.Text != "")
+            {
+                level = int.Parse(level_tbx.Text);
+                row = int.Parse(row_tbx.Text);
+                col = int.Parse(column_tbx.Text);
+            }
+            else if (tileurl_tbx.Text != "")
+            {
+                Match match = Regex.Match(tileurl_tbx.Text, @"\d+\/\d+\/\d+$");
+                string[] components = match.Value.Split('/');
+                int[] components_int = Array.ConvertAll<string, int>(components, new Converter<string, int>(Str2int));
+                level = components_int[0];
+                row = components_int[1];
+                col = components_int[2];
+            }
+            string bundleFilePath = BuildBundleFilePath(cacheRoot_tbx.Text, level, row, col);
+            byte[] data = GetTileBytes(bundleFilePath, level, row, col);
+            if(data==null)
+            {
+                MessageBox.Show("Tile Not Exist!");
+                return;
+            }
+            //Preview in picturebox
+            this.tile_picbox.Image = Image.FromStream(new MemoryStream(data));
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            redisConnection = ConnectionMultiplexer.Connect(this.redisSvr_tbx.Text);
+            CheckTiles(this.cacheRoot_tbx.Text, TileCheckMode.Exist);
+            MessageBox.Show("Completed.");
+        }
     }
 }
