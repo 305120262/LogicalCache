@@ -1,0 +1,40 @@
+﻿{
+    "caches": [
+        {
+            "name": "GD",
+            "path": "D:\\Research\\瓦片读取研究\\GDMap\\Layers"
+        },
+        {
+            "name": "World",
+            "path": " D:\\Research\\瓦片读取研究\\WorldMap\\Layers"
+        }
+    ],
+    "pickers": [
+        {
+            "mask": "GDBorder",
+            "type": "Blend",
+            "parameters": {},
+            "processors": []
+        },
+        {
+            "mask": "GD",
+            "type": "First",
+            "parameters": {},
+            "processors": [
+                {
+                    "type": "Watermark",
+                    "parameters": { "text": "Happy2018" }
+                }
+            ]
+        },
+        {
+            "mask": "World",
+            "type": "First",
+            "parameters": {},
+            "processors": []
+        }
+    ],
+    "registerdb": "127.0.0.1:6379"
+}
+
+
