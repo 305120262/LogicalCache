@@ -1,6 +1,10 @@
 ﻿{
     "caches": [
         {
+            "name": "demo",
+            "path": " D:\\Research\\瓦片读取研究\\demo\\Layers"
+        },
+        {
             "name": "GD",
             "path": "D:\\Research\\瓦片读取研究\\GDMap\\Layers"
         },
@@ -10,6 +14,12 @@
         }
     ],
     "pickers": [
+        {
+            "mask": "GDBorderLite",
+            "type": "First",
+            "parameters": {},
+            "processors": []
+        },
         {
             "mask": "GDBorder",
             "type": "Blend",

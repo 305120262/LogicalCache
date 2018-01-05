@@ -49,15 +49,17 @@
             this.label12 = new System.Windows.Forms.Label();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.button6 = new System.Windows.Forms.Button();
-            this.groupBox3 = new System.Windows.Forms.GroupBox();
-            this.cacheName_tbx = new System.Windows.Forms.TextBox();
+            this.textBox4 = new System.Windows.Forms.TextBox();
+            this.label25 = new System.Windows.Forms.Label();
+            this.textBox3 = new System.Windows.Forms.TextBox();
             this.label17 = new System.Windows.Forms.Label();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.label19 = new System.Windows.Forms.Label();
+            this.destCacheRoot_tbx = new System.Windows.Forms.TextBox();
+            this.label24 = new System.Windows.Forms.Label();
+            this.maskName_cbx = new System.Windows.Forms.ComboBox();
+            this.label23 = new System.Windows.Forms.Label();
+            this.processor_tbx = new System.Windows.Forms.TextBox();
             this.label18 = new System.Windows.Forms.Label();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.button7 = new System.Windows.Forms.Button();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage4 = new System.Windows.Forms.TabPage();
@@ -83,9 +85,6 @@
             this.scale_tbx = new System.Windows.Forms.TextBox();
             this.level_tbx = new System.Windows.Forms.TextBox();
             this.label13 = new System.Windows.Forms.Label();
-            this.tabPage3 = new System.Windows.Forms.TabPage();
-            this.button10 = new System.Windows.Forms.Button();
-            this.logCaches_lstbox = new System.Windows.Forms.ListBox();
             this.tabPage5 = new System.Windows.Forms.TabPage();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
             this.maskName_tbx = new System.Windows.Forms.TextBox();
@@ -96,19 +95,25 @@
             this.maskPosition_cbx = new System.Windows.Forms.ComboBox();
             this.label20 = new System.Windows.Forms.Label();
             this.button8 = new System.Windows.Forms.Button();
+            this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.button12 = new System.Windows.Forms.Button();
+            this.button10 = new System.Windows.Forms.Button();
+            this.maskName_lstbox = new System.Windows.Forms.ListBox();
             this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.button6 = new System.Windows.Forms.Button();
             this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.label19 = new System.Windows.Forms.Label();
+            this.maskLevels_tbx = new System.Windows.Forms.TextBox();
             this.groupBox2.SuspendLayout();
-            this.groupBox3.SuspendLayout();
             this.groupBox4.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage4.SuspendLayout();
             this.tabPage6.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.tile_picbox)).BeginInit();
             this.groupBox1.SuspendLayout();
-            this.tabPage3.SuspendLayout();
             this.tabPage5.SuspendLayout();
             this.groupBox5.SuspendLayout();
+            this.tabPage3.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
             this.SuspendLayout();
@@ -119,7 +124,7 @@
             this.cacheRoot_tbx.Name = "cacheRoot_tbx";
             this.cacheRoot_tbx.Size = new System.Drawing.Size(575, 21);
             this.cacheRoot_tbx.TabIndex = 2;
-            this.cacheRoot_tbx.Text = "D:\\AppDatas\\arcgisserver\\directories\\arcgiscache\\WorldMap\\Layers";
+            this.cacheRoot_tbx.Text = "D:\\Research\\瓦片读取研究\\GDMap\\Layers";
             this.cacheRoot_tbx.TextChanged += new System.EventHandler(this.cacheRoot_tbx_TextChanged);
             // 
             // button3
@@ -143,7 +148,7 @@
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(597, 75);
+            this.button2.Location = new System.Drawing.Point(597, 78);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(130, 23);
             this.button2.TabIndex = 13;
@@ -248,7 +253,7 @@
             // 
             // strip_h_max_tbx
             // 
-            this.strip_h_max_tbx.Location = new System.Drawing.Point(306, 67);
+            this.strip_h_max_tbx.Location = new System.Drawing.Point(355, 68);
             this.strip_h_max_tbx.Name = "strip_h_max_tbx";
             this.strip_h_max_tbx.Size = new System.Drawing.Size(100, 21);
             this.strip_h_max_tbx.TabIndex = 25;
@@ -257,7 +262,7 @@
             // label11
             // 
             this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(224, 71);
+            this.label11.Location = new System.Drawing.Point(273, 72);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(71, 12);
             this.label11.TabIndex = 26;
@@ -265,7 +270,7 @@
             // 
             // strip_w_max_tbx
             // 
-            this.strip_w_max_tbx.Location = new System.Drawing.Point(304, 104);
+            this.strip_w_max_tbx.Location = new System.Drawing.Point(353, 105);
             this.strip_w_max_tbx.Name = "strip_w_max_tbx";
             this.strip_w_max_tbx.Size = new System.Drawing.Size(100, 21);
             this.strip_w_max_tbx.TabIndex = 27;
@@ -274,7 +279,7 @@
             // label12
             // 
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(224, 108);
+            this.label12.Location = new System.Drawing.Point(273, 109);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(71, 12);
             this.label12.TabIndex = 28;
@@ -290,6 +295,10 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.textBox4);
+            this.groupBox2.Controls.Add(this.label25);
+            this.groupBox2.Controls.Add(this.textBox3);
+            this.groupBox2.Controls.Add(this.label17);
             this.groupBox2.Controls.Add(this.g_tbx);
             this.groupBox2.Controls.Add(this.label6);
             this.groupBox2.Controls.Add(this.r_tbx);
@@ -304,106 +313,115 @@
             this.groupBox2.Controls.Add(this.strip_h_max_tbx);
             this.groupBox2.Controls.Add(this.strip_w_min_tbx);
             this.groupBox2.Controls.Add(this.label10);
-            this.groupBox2.Location = new System.Drawing.Point(26, 32);
+            this.groupBox2.Location = new System.Drawing.Point(20, 32);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(551, 153);
+            this.groupBox2.Size = new System.Drawing.Size(551, 257);
             this.groupBox2.TabIndex = 41;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Check Tiles Settings";
             // 
-            // button6
+            // textBox4
             // 
-            this.button6.Location = new System.Drawing.Point(597, 61);
-            this.button6.Name = "button6";
-            this.button6.Size = new System.Drawing.Size(130, 23);
-            this.button6.TabIndex = 42;
-            this.button6.Text = "Register Tiles";
-            this.button6.UseVisualStyleBackColor = true;
-            this.button6.Click += new System.EventHandler(this.button6_Click);
+            this.textBox4.Location = new System.Drawing.Point(113, 208);
+            this.textBox4.Name = "textBox4";
+            this.textBox4.Size = new System.Drawing.Size(293, 21);
+            this.textBox4.TabIndex = 32;
             // 
-            // groupBox3
+            // label25
             // 
-            this.groupBox3.Controls.Add(this.cacheName_tbx);
-            this.groupBox3.Controls.Add(this.label17);
-            this.groupBox3.Location = new System.Drawing.Point(26, 34);
-            this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(551, 99);
-            this.groupBox3.TabIndex = 43;
-            this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Register Tiles to Logical Cache";
+            this.label25.AutoSize = true;
+            this.label25.Location = new System.Drawing.Point(18, 211);
+            this.label25.Name = "label25";
+            this.label25.Size = new System.Drawing.Size(83, 12);
+            this.label25.TabIndex = 31;
+            this.label25.Text = "Output Report";
             // 
-            // cacheName_tbx
+            // textBox3
             // 
-            this.cacheName_tbx.Location = new System.Drawing.Point(109, 44);
-            this.cacheName_tbx.Name = "cacheName_tbx";
-            this.cacheName_tbx.Size = new System.Drawing.Size(187, 21);
-            this.cacheName_tbx.TabIndex = 3;
-            this.cacheName_tbx.Text = "WorldMap";
+            this.textBox3.Location = new System.Drawing.Point(113, 159);
+            this.textBox3.Name = "textBox3";
+            this.textBox3.Size = new System.Drawing.Size(164, 21);
+            this.textBox3.TabIndex = 30;
+            this.textBox3.Text = "CorruptArea";
             // 
             // label17
             // 
             this.label17.AutoSize = true;
-            this.label17.Location = new System.Drawing.Point(26, 47);
+            this.label17.Location = new System.Drawing.Point(31, 162);
             this.label17.Name = "label17";
-            this.label17.Size = new System.Drawing.Size(65, 12);
-            this.label17.TabIndex = 2;
-            this.label17.Text = "Cache Name";
+            this.label17.Size = new System.Drawing.Size(59, 12);
+            this.label17.TabIndex = 29;
+            this.label17.Text = "Mask Name";
             // 
             // groupBox4
             // 
-            this.groupBox4.Controls.Add(this.textBox1);
-            this.groupBox4.Controls.Add(this.label19);
+            this.groupBox4.Controls.Add(this.destCacheRoot_tbx);
+            this.groupBox4.Controls.Add(this.label24);
+            this.groupBox4.Controls.Add(this.maskName_cbx);
+            this.groupBox4.Controls.Add(this.label23);
+            this.groupBox4.Controls.Add(this.processor_tbx);
             this.groupBox4.Controls.Add(this.label18);
-            this.groupBox4.Controls.Add(this.comboBox1);
-            this.groupBox4.Location = new System.Drawing.Point(26, 38);
+            this.groupBox4.Location = new System.Drawing.Point(26, 25);
             this.groupBox4.Name = "groupBox4";
             this.groupBox4.Size = new System.Drawing.Size(551, 264);
             this.groupBox4.TabIndex = 44;
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Processing Tiles Settings";
             // 
-            // textBox1
+            // destCacheRoot_tbx
             // 
-            this.textBox1.Location = new System.Drawing.Point(106, 83);
-            this.textBox1.Multiline = true;
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(398, 161);
-            this.textBox1.TabIndex = 3;
-            this.textBox1.Text = "{}";
+            this.destCacheRoot_tbx.Location = new System.Drawing.Point(107, 31);
+            this.destCacheRoot_tbx.Name = "destCacheRoot_tbx";
+            this.destCacheRoot_tbx.Size = new System.Drawing.Size(272, 21);
+            this.destCacheRoot_tbx.TabIndex = 7;
             // 
-            // label19
+            // label24
             // 
-            this.label19.AutoSize = true;
-            this.label19.Location = new System.Drawing.Point(27, 86);
-            this.label19.Name = "label19";
-            this.label19.Size = new System.Drawing.Size(65, 12);
-            this.label19.TabIndex = 2;
-            this.label19.Text = "Parameters";
+            this.label24.AutoSize = true;
+            this.label24.Location = new System.Drawing.Point(16, 34);
+            this.label24.Name = "label24";
+            this.label24.Size = new System.Drawing.Size(77, 12);
+            this.label24.TabIndex = 6;
+            this.label24.Text = "Output Cache";
+            // 
+            // maskName_cbx
+            // 
+            this.maskName_cbx.FormattingEnabled = true;
+            this.maskName_cbx.Location = new System.Drawing.Point(107, 76);
+            this.maskName_cbx.Name = "maskName_cbx";
+            this.maskName_cbx.Size = new System.Drawing.Size(121, 20);
+            this.maskName_cbx.TabIndex = 5;
+            // 
+            // label23
+            // 
+            this.label23.AutoSize = true;
+            this.label23.Location = new System.Drawing.Point(58, 76);
+            this.label23.Name = "label23";
+            this.label23.Size = new System.Drawing.Size(29, 12);
+            this.label23.TabIndex = 4;
+            this.label23.Text = "Mask";
+            // 
+            // processor_tbx
+            // 
+            this.processor_tbx.Location = new System.Drawing.Point(107, 119);
+            this.processor_tbx.Multiline = true;
+            this.processor_tbx.Name = "processor_tbx";
+            this.processor_tbx.Size = new System.Drawing.Size(398, 126);
+            this.processor_tbx.TabIndex = 3;
+            this.processor_tbx.Text = "{\r\n  \"type\": \"Watermark\",\r\n  \"parameters\": { \"text\": \"Happy2018\" }\r\n}";
             // 
             // label18
             // 
             this.label18.AutoSize = true;
-            this.label18.Location = new System.Drawing.Point(27, 37);
+            this.label18.Location = new System.Drawing.Point(34, 119);
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(59, 12);
             this.label18.TabIndex = 1;
             this.label18.Text = "Processor";
             // 
-            // comboBox1
-            // 
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Items.AddRange(new object[] {
-            "Clip",
-            "Watermark"});
-            this.comboBox1.Location = new System.Drawing.Point(106, 37);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(121, 20);
-            this.comboBox1.TabIndex = 0;
-            this.comboBox1.Text = "Clip";
-            // 
             // button7
             // 
-            this.button7.Location = new System.Drawing.Point(597, 73);
+            this.button7.Location = new System.Drawing.Point(601, 25);
             this.button7.Name = "button7";
             this.button7.Size = new System.Drawing.Size(130, 23);
             this.button7.TabIndex = 45;
@@ -415,8 +433,8 @@
             // 
             this.tabControl1.Controls.Add(this.tabPage4);
             this.tabControl1.Controls.Add(this.tabPage6);
-            this.tabControl1.Controls.Add(this.tabPage3);
             this.tabControl1.Controls.Add(this.tabPage5);
+            this.tabControl1.Controls.Add(this.tabPage3);
             this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Controls.Add(this.tabPage2);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -465,9 +483,9 @@
             this.label15.AutoSize = true;
             this.label15.Location = new System.Drawing.Point(27, 79);
             this.label15.Name = "label15";
-            this.label15.Size = new System.Drawing.Size(71, 12);
+            this.label15.Size = new System.Drawing.Size(47, 12);
             this.label15.TabIndex = 41;
-            this.label15.Text = "Register DB";
+            this.label15.Text = "Mask DB";
             // 
             // tabPage6
             // 
@@ -484,9 +502,9 @@
             // 
             // button5
             // 
-            this.button5.Location = new System.Drawing.Point(627, 217);
+            this.button5.Location = new System.Drawing.Point(572, 217);
             this.button5.Name = "button5";
-            this.button5.Size = new System.Drawing.Size(75, 23);
+            this.button5.Size = new System.Drawing.Size(130, 23);
             this.button5.TabIndex = 44;
             this.button5.Text = "Preview";
             this.button5.UseVisualStyleBackColor = true;
@@ -503,9 +521,9 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(627, 266);
+            this.button1.Location = new System.Drawing.Point(572, 266);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.Size = new System.Drawing.Size(130, 23);
             this.button1.TabIndex = 42;
             this.button1.Text = "Export";
             this.button1.UseVisualStyleBackColor = true;
@@ -648,39 +666,6 @@
             this.label13.TabIndex = 29;
             this.label13.Text = "Level";
             // 
-            // tabPage3
-            // 
-            this.tabPage3.Controls.Add(this.button10);
-            this.tabPage3.Controls.Add(this.logCaches_lstbox);
-            this.tabPage3.Controls.Add(this.groupBox3);
-            this.tabPage3.Controls.Add(this.button6);
-            this.tabPage3.Location = new System.Drawing.Point(4, 22);
-            this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage3.Size = new System.Drawing.Size(1020, 322);
-            this.tabPage3.TabIndex = 2;
-            this.tabPage3.Text = "Tiles Register";
-            this.tabPage3.UseVisualStyleBackColor = true;
-            // 
-            // button10
-            // 
-            this.button10.Location = new System.Drawing.Point(276, 173);
-            this.button10.Name = "button10";
-            this.button10.Size = new System.Drawing.Size(130, 23);
-            this.button10.TabIndex = 45;
-            this.button10.Text = "Get Caches";
-            this.button10.UseVisualStyleBackColor = true;
-            this.button10.Click += new System.EventHandler(this.button10_Click);
-            // 
-            // logCaches_lstbox
-            // 
-            this.logCaches_lstbox.FormattingEnabled = true;
-            this.logCaches_lstbox.ItemHeight = 12;
-            this.logCaches_lstbox.Location = new System.Drawing.Point(26, 173);
-            this.logCaches_lstbox.Name = "logCaches_lstbox";
-            this.logCaches_lstbox.Size = new System.Drawing.Size(228, 100);
-            this.logCaches_lstbox.TabIndex = 44;
-            // 
             // tabPage5
             // 
             this.tabPage5.Controls.Add(this.groupBox5);
@@ -695,6 +680,8 @@
             // 
             // groupBox5
             // 
+            this.groupBox5.Controls.Add(this.maskLevels_tbx);
+            this.groupBox5.Controls.Add(this.label19);
             this.groupBox5.Controls.Add(this.maskName_tbx);
             this.groupBox5.Controls.Add(this.label22);
             this.groupBox5.Controls.Add(this.button9);
@@ -704,7 +691,7 @@
             this.groupBox5.Controls.Add(this.label20);
             this.groupBox5.Location = new System.Drawing.Point(27, 39);
             this.groupBox5.Name = "groupBox5";
-            this.groupBox5.Size = new System.Drawing.Size(655, 179);
+            this.groupBox5.Size = new System.Drawing.Size(655, 259);
             this.groupBox5.TabIndex = 3;
             this.groupBox5.TabStop = false;
             this.groupBox5.Text = "Mask Settings";
@@ -722,9 +709,9 @@
             this.label22.AutoSize = true;
             this.label22.Location = new System.Drawing.Point(53, 131);
             this.label22.Name = "label22";
-            this.label22.Size = new System.Drawing.Size(65, 12);
+            this.label22.Size = new System.Drawing.Size(59, 12);
             this.label22.TabIndex = 6;
-            this.label22.Text = "Cache Name";
+            this.label22.Text = "Mask Name";
             // 
             // button9
             // 
@@ -776,7 +763,7 @@
             // 
             // button8
             // 
-            this.button8.Location = new System.Drawing.Point(717, 65);
+            this.button8.Location = new System.Drawing.Point(708, 39);
             this.button8.Name = "button8";
             this.button8.Size = new System.Drawing.Size(121, 23);
             this.button8.TabIndex = 1;
@@ -784,8 +771,51 @@
             this.button8.UseVisualStyleBackColor = true;
             this.button8.Click += new System.EventHandler(this.button8_Click);
             // 
+            // tabPage3
+            // 
+            this.tabPage3.Controls.Add(this.button12);
+            this.tabPage3.Controls.Add(this.button10);
+            this.tabPage3.Controls.Add(this.maskName_lstbox);
+            this.tabPage3.Location = new System.Drawing.Point(4, 22);
+            this.tabPage3.Name = "tabPage3";
+            this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage3.Size = new System.Drawing.Size(1020, 322);
+            this.tabPage3.TabIndex = 2;
+            this.tabPage3.Text = "Mask DB";
+            this.tabPage3.UseVisualStyleBackColor = true;
+            // 
+            // button12
+            // 
+            this.button12.Location = new System.Drawing.Point(298, 78);
+            this.button12.Name = "button12";
+            this.button12.Size = new System.Drawing.Size(130, 23);
+            this.button12.TabIndex = 46;
+            this.button12.Text = "Delete Mask";
+            this.button12.UseVisualStyleBackColor = true;
+            this.button12.Click += new System.EventHandler(this.button12_Click);
+            // 
+            // button10
+            // 
+            this.button10.Location = new System.Drawing.Point(298, 38);
+            this.button10.Name = "button10";
+            this.button10.Size = new System.Drawing.Size(130, 23);
+            this.button10.TabIndex = 45;
+            this.button10.Text = "Get Mask";
+            this.button10.UseVisualStyleBackColor = true;
+            this.button10.Click += new System.EventHandler(this.button10_Click);
+            // 
+            // maskName_lstbox
+            // 
+            this.maskName_lstbox.FormattingEnabled = true;
+            this.maskName_lstbox.ItemHeight = 12;
+            this.maskName_lstbox.Location = new System.Drawing.Point(35, 38);
+            this.maskName_lstbox.Name = "maskName_lstbox";
+            this.maskName_lstbox.Size = new System.Drawing.Size(228, 100);
+            this.maskName_lstbox.TabIndex = 44;
+            // 
             // tabPage1
             // 
+            this.tabPage1.Controls.Add(this.button6);
             this.tabPage1.Controls.Add(this.groupBox2);
             this.tabPage1.Controls.Add(this.button2);
             this.tabPage1.Controls.Add(this.button4);
@@ -796,6 +826,16 @@
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Check Tiles";
             this.tabPage1.UseVisualStyleBackColor = true;
+            // 
+            // button6
+            // 
+            this.button6.Location = new System.Drawing.Point(597, 32);
+            this.button6.Name = "button6";
+            this.button6.Size = new System.Drawing.Size(130, 23);
+            this.button6.TabIndex = 44;
+            this.button6.Text = "Check Missing Tiles";
+            this.button6.UseVisualStyleBackColor = true;
+            this.button6.Click += new System.EventHandler(this.button6_Click);
             // 
             // tabPage2
             // 
@@ -809,6 +849,22 @@
             this.tabPage2.Text = "Process Tiles";
             this.tabPage2.UseVisualStyleBackColor = true;
             // 
+            // label19
+            // 
+            this.label19.AutoSize = true;
+            this.label19.Location = new System.Drawing.Point(55, 181);
+            this.label19.Name = "label19";
+            this.label19.Size = new System.Drawing.Size(41, 12);
+            this.label19.TabIndex = 8;
+            this.label19.Text = "Levels";
+            // 
+            // maskLevels_tbx
+            // 
+            this.maskLevels_tbx.Location = new System.Drawing.Point(167, 178);
+            this.maskLevels_tbx.Name = "maskLevels_tbx";
+            this.maskLevels_tbx.Size = new System.Drawing.Size(324, 21);
+            this.maskLevels_tbx.TabIndex = 9;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -820,8 +876,6 @@
             this.Text = "Logical Cache Desktop";
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
-            this.groupBox3.ResumeLayout(false);
-            this.groupBox3.PerformLayout();
             this.groupBox4.ResumeLayout(false);
             this.groupBox4.PerformLayout();
             this.tabControl1.ResumeLayout(false);
@@ -831,10 +885,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.tile_picbox)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
-            this.tabPage3.ResumeLayout(false);
             this.tabPage5.ResumeLayout(false);
             this.groupBox5.ResumeLayout(false);
             this.groupBox5.PerformLayout();
+            this.tabPage3.ResumeLayout(false);
             this.tabPage1.ResumeLayout(false);
             this.tabPage2.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -863,15 +917,9 @@
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.Button button6;
-        private System.Windows.Forms.GroupBox groupBox3;
-        private System.Windows.Forms.TextBox cacheName_tbx;
-        private System.Windows.Forms.Label label17;
         private System.Windows.Forms.GroupBox groupBox4;
-        private System.Windows.Forms.TextBox textBox1;
-        private System.Windows.Forms.Label label19;
+        private System.Windows.Forms.TextBox processor_tbx;
         private System.Windows.Forms.Label label18;
-        private System.Windows.Forms.ComboBox comboBox1;
         private System.Windows.Forms.Button button7;
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tabPage4;
@@ -910,8 +958,20 @@
         private System.Windows.Forms.TextBox level_tbx;
         private System.Windows.Forms.Label label13;
         private System.Windows.Forms.Button button10;
-        private System.Windows.Forms.ListBox logCaches_lstbox;
+        private System.Windows.Forms.ListBox maskName_lstbox;
         private System.Windows.Forms.Button button11;
+        private System.Windows.Forms.TextBox destCacheRoot_tbx;
+        private System.Windows.Forms.Label label24;
+        private System.Windows.Forms.ComboBox maskName_cbx;
+        private System.Windows.Forms.Label label23;
+        private System.Windows.Forms.Button button12;
+        private System.Windows.Forms.Button button6;
+        private System.Windows.Forms.TextBox textBox3;
+        private System.Windows.Forms.Label label17;
+        private System.Windows.Forms.TextBox textBox4;
+        private System.Windows.Forms.Label label25;
+        private System.Windows.Forms.TextBox maskLevels_tbx;
+        private System.Windows.Forms.Label label19;
     }
 }
 

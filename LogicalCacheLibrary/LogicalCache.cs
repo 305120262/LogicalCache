@@ -23,7 +23,7 @@ namespace LogicalCacheLibrary
         Exist
     }
     public class CheckTilesParameters { public string bundle_path; }
-    public class ReplaceBundleTilesParameters { public string scrBundle; public string destBundle; public List<TileInfo> tiles; }
+    public class ProcessTilesParameters { public string scrBundle; public string destBundle; public List<TileInfo> tiles; public Processor_conf config; }
 
     public class LogicalCache
     {
@@ -32,7 +32,7 @@ namespace LogicalCacheLibrary
         const String BUNDLE_EXT = ".bundle";
         public int r, g, b = 0;
         public int h_max, w_max, h_min, w_min = 0;
-        public string cache_name = "";
+        public string mask_name = "";
         public string cache_root_folder = "";
         public TileCheckMode check_mode = TileCheckMode.Whole;
         public Configuration config;
@@ -80,11 +80,6 @@ namespace LogicalCacheLibrary
 
                 BinaryReader reader = new BinaryReader(source);
 
-                source.Seek(0, SeekOrigin.Begin);
-                byte[] ver = new byte[4];
-                reader.Read(ver, 0, 4);
-                int vernumber = BitConverter.ToInt32(ver, 0);
-
                 source.Seek((index * 8) + COMPACT_CACHE_HEADER_LENGTH, SeekOrigin.Begin);
 
                 byte[] offsetAndSize = new byte[8];
@@ -110,51 +105,198 @@ namespace LogicalCacheLibrary
         }
 
         //To-do
-        public void CreateCacheBundleFromTemplate(string dst, string src)
+        public async void ProcessTiles(string SrcCacheRoot,string DestCacheRoot, string mask,string config)
         {
-            using (FileStream destination = File.Create(dst))
+            Dictionary<string, List<TileInfo>> bundles = new Dictionary<string, List<TileInfo>>();
+            if(mask!="")
             {
-                using (FileStream source = File.OpenRead(src))
+                IDatabase client = redisConnection.GetDatabase();
+                if(client.KeyExists(mask))
                 {
-                    BinaryReader reader = new BinaryReader(source);
-                    BinaryWriter writer = new BinaryWriter(destination);
-                    source.Seek(0, SeekOrigin.Begin);
-                    byte[] header = new byte[COMPACT_CACHE_HEADER_LENGTH];
-                    reader.Read(header, 0, COMPACT_CACHE_HEADER_LENGTH);
-                    writer.Write(header);
-                }
-            }
-        }
-
-        public void ReplaceBundleTiles(Object paras)
-        {
-            var p = paras as ReplaceBundleTilesParameters;
-            using (FileStream dest = File.OpenWrite(p.destBundle))
-            {
-                using (FileStream src = File.OpenRead(p.scrBundle))
-                {
-                    BinaryReader reader = new BinaryReader(src, ASCIIEncoding.ASCII, true);
-                    for (int r = 0; r < 128; r++)
+                    var masks = await client.SetMembersAsync(mask);
+                    foreach ( var m in masks)
                     {
-                        for (int c = 0; c < 128; c++)
+                        string[] componets = m.ToString().Split('/');
+                        int level = int.Parse(componets[0].Substring(1));
+                        int row = int.Parse(componets[1].Substring(1));
+                        int column = int.Parse(componets[2].Substring(1));
+                        string bundlepath =BuildBundleFilePath(SrcCacheRoot, level, row, column);
+                        if(bundles.ContainsKey(bundlepath))
                         {
-                            int index = r * 128 + c;
-                            src.Seek((index * 8) + COMPACT_CACHE_HEADER_LENGTH, SeekOrigin.Begin);
-
-                            byte[] offsetAndSize = new byte[8];
-                            reader.Read(offsetAndSize, 0, 8);
-
-                            byte[] offsetBytes = new byte[8];
-                            Buffer.BlockCopy(offsetAndSize, 0, offsetBytes, 0, 5);
-                            long offset = BitConverter.ToUInt32(offsetBytes, 0);
-
-                            byte[] sizeBytes = new byte[4];
-                            Buffer.BlockCopy(offsetAndSize, 5, sizeBytes, 0, 3);
-                            int size = BitConverter.ToInt32(sizeBytes, 0);
+                            List<TileInfo> tiles_lst = bundles[bundlepath];
+                            tiles_lst.Add(new TileInfo() { Level = level, Row = row, Column = column });
+                        }
+                        else
+                        {
+                            List<TileInfo> tiles_lst = new List<TileInfo>();
+                            tiles_lst.Add(new TileInfo() { Level = level, Row = row, Column = column });
+                            bundles.Add(bundlepath, tiles_lst);
                         }
                     }
                 }
             }
+            Processor_conf processor = JsonConvert.DeserializeObject<Processor_conf>(config);
+            List<Task<string>> processList = new List<Task<string>>();
+            foreach (string f in bundles.Keys)
+            {
+                string desBundle = DestCacheRoot + f.Substring(f.IndexOf(SrcCacheRoot)+SrcCacheRoot.Length);
+                var paras = new ProcessTilesParameters { scrBundle = f , destBundle =desBundle, tiles = bundles[f]  ,config=processor};
+                Task<string> processTileTask = Task.Factory.StartNew<string>((Object p) => ProcessBundle(p), paras);
+                processList.Add(processTileTask);
+            }
+            Task.WaitAll(processList.ToArray());
+            return;
+
+        }
+
+        private void InitCacheBundle(string path)
+        {
+            FileInfo fileInfo = new FileInfo(path);
+            if (!fileInfo.Directory.Exists) fileInfo.Directory.Create();
+            using (FileStream destination = File.Create(path))
+            {
+                BinaryWriter writer = new BinaryWriter(destination);
+                byte[] header = new byte[COMPACT_CACHE_HEADER_LENGTH];
+                int offset = 0;
+
+                byte[] p1 = BitConverter.GetBytes(3);
+                Buffer.BlockCopy(p1, 0, header, offset, 4);
+                offset += 4;
+
+                byte[] p2 = BitConverter.GetBytes(16384);
+                Buffer.BlockCopy(p2, 0, header, offset, 4);
+                offset += 4;
+
+                byte[] p3 = BitConverter.GetBytes(0);
+                Buffer.BlockCopy(p3, 0, header, offset, 4);
+                offset += 4;
+
+                byte[] p4 = BitConverter.GetBytes(5);
+                Buffer.BlockCopy(p4, 0, header, offset, 4);
+                offset += 4;
+
+                byte[] p5 = BitConverter.GetBytes((long)0);
+                Buffer.BlockCopy(p5, 0, header, offset, 8);
+                offset += 8;
+
+                byte[] p6 = BitConverter.GetBytes((long)0);
+                Buffer.BlockCopy(p6, 0, header, offset, 8);
+                offset += 8;
+
+                byte[] p7 = BitConverter.GetBytes((long)40);
+                Buffer.BlockCopy(p7, 0, header, offset, 8);
+                offset += 8;
+
+                byte[] p8 = BitConverter.GetBytes(20 + 131072);
+                Buffer.BlockCopy(p8, 0, header, offset, 4);
+                offset += 4;
+
+                byte[] p9 = BitConverter.GetBytes(3);
+                Buffer.BlockCopy(p9, 0, header, offset, 4);
+                offset += 4;
+
+                byte[] p10 = BitConverter.GetBytes(16);
+                Buffer.BlockCopy(p10, 0, header, offset, 4);
+                offset += 4;
+
+                byte[] p11 = BitConverter.GetBytes(16384);
+                Buffer.BlockCopy(p11, 0, header, offset, 4);
+                offset += 4;
+
+                byte[] p12 = BitConverter.GetBytes(5);
+                Buffer.BlockCopy(p12, 0, header, offset, 4);
+                offset += 4;
+
+                byte[] p13 = BitConverter.GetBytes(131072);
+                Buffer.BlockCopy(p13, 0, header, offset, 4);
+                offset += 4;
+
+                writer.Write(header);
+
+                byte[] index = new byte[131072];
+                writer.Write(index);
+
+                writer.Close();
+            }
+        }
+
+        public string ProcessBundle(Object paras)
+        {
+            var p = paras as ProcessTilesParameters;
+            if(!File.Exists(p.destBundle))
+            {
+                InitCacheBundle(p.destBundle);
+            }
+            using (FileStream src = File.OpenRead(p.scrBundle))
+            {
+                BinaryReader reader = new BinaryReader(src, ASCIIEncoding.ASCII,true);
+                using (FileStream dest = File.Open(p.destBundle,FileMode.Open,FileAccess.ReadWrite))
+                {
+                    BinaryWriter writer = new BinaryWriter(dest, ASCIIEncoding.ASCII, true);
+                    foreach(var tile in p.tiles)
+                    {
+                        int index = BUNDLX_MAXIDX * (tile.Row % BUNDLX_MAXIDX) + (tile.Column % BUNDLX_MAXIDX);
+                        src.Seek((index * 8) + COMPACT_CACHE_HEADER_LENGTH, SeekOrigin.Begin);
+
+                        byte[] offsetAndSize = new byte[8];
+                        reader.Read(offsetAndSize, 0, 8);
+
+                        byte[] offsetBytes = new byte[8];
+                        Buffer.BlockCopy(offsetAndSize, 0, offsetBytes, 0, 5);
+                        long offset = BitConverter.ToUInt32(offsetBytes, 0);
+
+                        byte[] sizeBytes = new byte[4];
+                        Buffer.BlockCopy(offsetAndSize, 5, sizeBytes, 0, 3);
+                        int size = BitConverter.ToInt32(sizeBytes, 0);
+
+                        if (size != 0)
+                        {
+                            src.Seek(offset, SeekOrigin.Begin);
+                            byte[] tile_src = new byte[size];
+                            reader.Read(tile_src, 0, size);
+
+                            ImageFactory imgfac = new ImageFactory(true);
+                            imgfac.Load(tile_src);
+                            using(MemoryStream stream  = new MemoryStream())
+                            { 
+                                imgfac.Save(stream);
+                                byte[] tile_desc = stream.ToArray();
+                                int size_dest = tile_desc.Length;
+                                dest.Seek(8, SeekOrigin.Begin);
+                                byte[] maxsizeBytes = new byte[4];
+                                dest.Read(maxsizeBytes, 0, 4);
+                                int maxsize = BitConverter.ToInt32(maxsizeBytes, 0);
+                                maxsize = (maxsize < size_dest) ? size_dest : maxsize;
+                                dest.Seek(8, SeekOrigin.Begin);
+                                writer.Write(BitConverter.GetBytes(maxsize));
+
+                                dest.Seek(24, SeekOrigin.Begin);
+                                writer.Write(BitConverter.GetBytes(size_dest + dest.Length));
+
+                                
+                                byte[] offsetAndSize_desc = new byte[8];
+                                Buffer.BlockCopy(BitConverter.GetBytes(size_dest), 0, offsetAndSize_desc, 5, 3);
+                                long index_desc = dest.Length + 4;
+                                byte[] indexByte_desc = BitConverter.GetBytes(index_desc);
+                                Array.Resize<byte>(ref indexByte_desc, 5);
+                                Buffer.BlockCopy(indexByte_desc, 0, offsetAndSize_desc, 0, 5);
+                                dest.Seek((index * 8) + COMPACT_CACHE_HEADER_LENGTH, SeekOrigin.Begin);
+                                writer.Write(offsetAndSize_desc);
+
+                                dest.Seek(index_desc, SeekOrigin.Begin);
+                                writer.Write(BitConverter.GetBytes(size_dest));
+                                writer.Write(stream.ToArray());
+                                Image img = Image.FromStream(stream);
+                                string output = string.Format("L{0}R{1}C{2}", tile.Level, tile.Row, tile.Column);
+                                img.Save(@"D:\Research\瓦片读取研究\test\" + output + ".png");
+                            }
+                        }
+                       
+                    }
+                }
+                reader.Close();
+            }
+            return "";
         }
 
 
@@ -175,10 +317,7 @@ namespace LogicalCacheLibrary
             var zooms = Directory.EnumerateDirectories(pathToCacheRoot + @"\_alllayers\");
             List<Task<string>> checkList = new List<Task<string>>();
             this.check_mode = mode;
-            if(mode==TileCheckMode.Exist)
-            {
-                ClearRegisterCache(this.cache_name);
-            }
+            DropMask(this.mask_name);
             foreach (string z in zooms)
             {
                 //if(this.level_tbx.Text!="")
@@ -195,8 +334,8 @@ namespace LogicalCacheLibrary
                 foreach (string f in files)
                 {
                     var paras = new CheckTilesParameters { bundle_path = f };
-                    Task<string> CheckTileTask = Task.Factory.StartNew<string>((Object p) => CheckBundle(p), paras);
-                    checkList.Add(CheckTileTask);
+                    Task<string> checkTileTask = Task.Factory.StartNew<string>((Object p) => CheckBundle(p), paras);
+                    checkList.Add(checkTileTask);
                 }
             }
             Task.WaitAll(checkList.ToArray());
@@ -249,7 +388,7 @@ namespace LogicalCacheLibrary
                         {
                             IDatabase redisClient = redisConnection.GetDatabase();
                             string tileID = String.Format("L{0}/R{1}/C{2}", level, row + r, column + c);
-                            redisClient.SetAddAsync(cache_name, tileID, CommandFlags.FireAndForget);
+                            redisClient.SetAddAsync(mask_name, tileID, CommandFlags.FireAndForget);
                             continue;
                         }
                         source.Seek(offset, SeekOrigin.Begin);
@@ -308,10 +447,6 @@ namespace LogicalCacheLibrary
                 imgFac.Load(data);
                 using (Bitmap map = new Bitmap(imgFac.Image))
                 {
-
-
-
-
                     bool addband_flag = false;// is band begin
                     List<List<Tuple<int, int>>> bands = new List<List<Tuple<int, int>>>();
                     for (int x = 0; x < imgFac.Image.Width; x++)
@@ -520,7 +655,6 @@ namespace LogicalCacheLibrary
                     using (ImageFactory imgFac = new ImageFactory(preserveExifData: true))
                     {
                         imgFac.Load(data)
-                              //.Watermark(new ImageProcessor.Imaging.TextLayer { Text = "Hello", FontSize = 20, FontColor = Color.White, Opacity = 60 })
                               .Save(outStream);
                     }
                 }
@@ -612,7 +746,7 @@ namespace LogicalCacheLibrary
             {
                 if (processor.type == "Watermark")
                 {
-                    tile.Watermark(new ImageProcessor.Imaging.TextLayer() { Text = processor.parameters["text"] });
+                    tile = tile.Watermark(new ImageProcessor.Imaging.TextLayer() { Text = processor.parameters["text"] });
                 }
             }
             return tile;
@@ -666,9 +800,9 @@ namespace LogicalCacheLibrary
             return keys;
         }
 
-        public void BuildMask(string pathToCacheRoot, string shapefile, string maskName, string position)
+        public void BuildMask(string pathToCacheRoot, string shapefile, string maskName, string position,List<int> levels)
         {
-            ClearRegisterCache(maskName);
+            DropMask(maskName);
             CacheInfo cache = new CacheInfo();
             cache.LoadFromSchemaFile(pathToCacheRoot + @"\conf.xml");
             ShapefileReader reader = new ShapefileReader(shapefile);
@@ -677,6 +811,10 @@ namespace LogicalCacheLibrary
             {
                 foreach (var lod in cache.LODs.Reverse())
                 {
+                    if( !levels.Contains(lod.Value.Item1))
+                    {
+                        continue;
+                    }
                     TileInfo tile_start = cache.GetTileInfoFromXY(lod.Key, shp.Envelope.Coordinates[0].X, shp.Envelope.Coordinates[0].Y);
                     TileInfo tile_end = cache.GetTileInfoFromXY(lod.Key, shp.Envelope.Coordinates[2].X, shp.Envelope.Coordinates[2].Y);
                     int level = tile_start.Level;
@@ -716,7 +854,7 @@ namespace LogicalCacheLibrary
 
         }
 
-        private void ClearRegisterCache(string name)
+        public void DropMask(string name)
         {
             foreach (var key in redisConnection.GetServer(this.redisConnectionString).Keys())
             {

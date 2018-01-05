@@ -12,6 +12,6 @@ namespace LogicalCacheLibrary
         public int Row { get; set; }
         public int Column { get; set; }
         public int Size { get; set; }
-
+        public byte[] Tile { get; set; }
     }
 }

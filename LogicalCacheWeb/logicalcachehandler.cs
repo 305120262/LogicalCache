@@ -10,7 +10,7 @@ namespace LogicalCacheWeb
 
         public LogicalCacheHandler()
         {
-            logCache.LoadConfig(@"D:\Projects\CacheFilter\LogicalCacheWeb\demo.json");
+            logCache.LoadConfig(@"D:\Projects\LogicalCache\LogicalCacheWeb\demo.json");
         }
 
         /// <summary>

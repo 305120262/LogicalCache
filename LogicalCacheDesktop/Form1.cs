@@ -181,15 +181,14 @@ namespace LogicalCacheDesktop
 
         private void button6_Click(object sender, EventArgs e)
         {
-            logCache.cache_name = this.cacheName_tbx.Text;
-            logCache.CheckTiles(this.cacheRoot_tbx.Text, TileCheckMode.Exist);
+            logCache.mask_name = this.maskName_tbx.Text;
+            logCache.CheckTiles(this.maskName_tbx.Text, TileCheckMode.Exist);
             MessageBox.Show("Completed.");
         }
 
         private void button10_Click(object sender, EventArgs e)
         {
-            logCaches_lstbox.Items.Clear();
-            logCaches_lstbox.DataSource = logCache.GetRegisterCaches();
+            maskName_lstbox.DataSource = logCache.GetRegisterCaches();
         }
 
         private void button11_Click(object sender, EventArgs e)
@@ -198,6 +197,8 @@ namespace LogicalCacheDesktop
             {
                 logCache.ConnectRegisterDB(this.redisSvr_tbx.Text);
                 MessageBox.Show("Connected.");
+                maskName_lstbox.DataSource = logCache.GetRegisterCaches();
+                maskName_cbx.DataSource = logCache.GetRegisterCaches();
             }
             catch
             { }
@@ -206,7 +207,9 @@ namespace LogicalCacheDesktop
         //Build Mask
         private void button8_Click(object sender, EventArgs e)
         {
-            logCache.BuildMask(this.cacheRoot_tbx.Text,this.maskShape_tbx.Text, this.maskName_tbx.Text, this.maskPosition_cbx.Text);
+            List<int> levels = new List<string>(maskLevels_tbx.Text.Split(',')).ConvertAll(new Converter<string, int>(Str2int));
+            
+            logCache.BuildMask(this.cacheRoot_tbx.Text,this.maskShape_tbx.Text, this.maskName_tbx.Text, this.maskPosition_cbx.Text,levels);
             MessageBox.Show("Completed.");
         }
 
@@ -223,7 +226,7 @@ namespace LogicalCacheDesktop
         //Process Tiles
         private void button7_Click(object sender, EventArgs e)
         {
-
+            logCache.ProcessTiles(cacheRoot_tbx.Text,destCacheRoot_tbx.Text,maskName_cbx.Text,processor_tbx.Text);
         }
 
         private void cacheRoot_tbx_TextChanged(object sender, EventArgs e)
@@ -231,5 +234,13 @@ namespace LogicalCacheDesktop
             logCache.cache_root_folder = this.cacheRoot_tbx.Text;
         }
 
+        private void button12_Click(object sender, EventArgs e)
+        {
+            foreach(var i in maskName_lstbox.SelectedItems)
+            {
+                logCache.DropMask(i.ToString());
+            }
+            maskName_lstbox.DataSource = logCache.GetRegisterCaches();
+        }
     }
 }
