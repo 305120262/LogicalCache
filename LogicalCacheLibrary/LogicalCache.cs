@@ -23,7 +23,7 @@ namespace LogicalCacheLibrary
         Exist
     }
     public class CheckTilesParameters { public string bundle_path; }
-    public class ProcessTilesParameters { public string scrBundle; public string destBundle; public List<TileInfo> tiles; public Processor_conf config; }
+    public class ProcessTilesParameters { public string scrBundle; public string destBundle; public List<TileInfo> tiles; public List<Processor_conf> config; }
 
     public class LogicalCache
     {
@@ -135,7 +135,7 @@ namespace LogicalCacheLibrary
                     }
                 }
             }
-            Processor_conf processor = JsonConvert.DeserializeObject<Processor_conf>(config);
+            List<Processor_conf> processor = JsonConvert.DeserializeObject<List<Processor_conf>>(config);
             List<Task<string>> processList = new List<Task<string>>();
             foreach (string f in bundles.Keys)
             {
@@ -257,7 +257,8 @@ namespace LogicalCacheLibrary
 
                             ImageFactory imgfac = new ImageFactory(true);
                             imgfac.Load(tile_src);
-                            using(MemoryStream stream  = new MemoryStream())
+                            imgfac = ProcessTile(imgfac, p.config);
+                            using (MemoryStream stream  = new MemoryStream())
                             { 
                                 imgfac.Save(stream);
                                 byte[] tile_desc = stream.ToArray();
@@ -276,19 +277,20 @@ namespace LogicalCacheLibrary
                                 
                                 byte[] offsetAndSize_desc = new byte[8];
                                 Buffer.BlockCopy(BitConverter.GetBytes(size_dest), 0, offsetAndSize_desc, 5, 3);
-                                long index_desc = dest.Length + 4;
-                                byte[] indexByte_desc = BitConverter.GetBytes(index_desc);
-                                Array.Resize<byte>(ref indexByte_desc, 5);
-                                Buffer.BlockCopy(indexByte_desc, 0, offsetAndSize_desc, 0, 5);
+                                long offset_desc = dest.Length + 4;
+                                byte[] offsetByte_desc = BitConverter.GetBytes(offset_desc);
+                                Array.Resize<byte>(ref offsetByte_desc, 5);
+                                Buffer.BlockCopy(offsetByte_desc, 0, offsetAndSize_desc, 0, 5);
                                 dest.Seek((index * 8) + COMPACT_CACHE_HEADER_LENGTH, SeekOrigin.Begin);
                                 writer.Write(offsetAndSize_desc);
 
-                                dest.Seek(index_desc, SeekOrigin.Begin);
+                                dest.Seek(offset_desc-4, SeekOrigin.Begin);
                                 writer.Write(BitConverter.GetBytes(size_dest));
                                 writer.Write(stream.ToArray());
-                                Image img = Image.FromStream(stream);
-                                string output = string.Format("L{0}R{1}C{2}", tile.Level, tile.Row, tile.Column);
-                                img.Save(@"D:\Research\瓦片读取研究\test\" + output + ".png");
+
+                                //Image img = Image.FromStream(stream);
+                                //string output = string.Format("L{0}R{1}C{2}", tile.Level, tile.Row, tile.Column);
+                                //img.Save(@"D:\Research\瓦片读取研究\test\" + output + ".png");
                             }
                         }
                        

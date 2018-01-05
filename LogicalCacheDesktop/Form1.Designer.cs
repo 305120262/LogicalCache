@@ -87,6 +87,8 @@
             this.label13 = new System.Windows.Forms.Label();
             this.tabPage5 = new System.Windows.Forms.TabPage();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
+            this.maskLevels_tbx = new System.Windows.Forms.TextBox();
+            this.label19 = new System.Windows.Forms.Label();
             this.maskName_tbx = new System.Windows.Forms.TextBox();
             this.label22 = new System.Windows.Forms.Label();
             this.button9 = new System.Windows.Forms.Button();
@@ -102,8 +104,6 @@
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.button6 = new System.Windows.Forms.Button();
             this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.label19 = new System.Windows.Forms.Label();
-            this.maskLevels_tbx = new System.Windows.Forms.TextBox();
             this.groupBox2.SuspendLayout();
             this.groupBox4.SuspendLayout();
             this.tabControl1.SuspendLayout();
@@ -408,7 +408,7 @@
             this.processor_tbx.Name = "processor_tbx";
             this.processor_tbx.Size = new System.Drawing.Size(398, 126);
             this.processor_tbx.TabIndex = 3;
-            this.processor_tbx.Text = "{\r\n  \"type\": \"Watermark\",\r\n  \"parameters\": { \"text\": \"Happy2018\" }\r\n}";
+            this.processor_tbx.Text = "[{\r\n  \"type\": \"Watermark\",\r\n  \"parameters\": { \"text\": \"Happy2018\" }\r\n}]";
             // 
             // label18
             // 
@@ -696,6 +696,22 @@
             this.groupBox5.TabStop = false;
             this.groupBox5.Text = "Mask Settings";
             // 
+            // maskLevels_tbx
+            // 
+            this.maskLevels_tbx.Location = new System.Drawing.Point(167, 178);
+            this.maskLevels_tbx.Name = "maskLevels_tbx";
+            this.maskLevels_tbx.Size = new System.Drawing.Size(324, 21);
+            this.maskLevels_tbx.TabIndex = 9;
+            // 
+            // label19
+            // 
+            this.label19.AutoSize = true;
+            this.label19.Location = new System.Drawing.Point(55, 181);
+            this.label19.Name = "label19";
+            this.label19.Size = new System.Drawing.Size(41, 12);
+            this.label19.TabIndex = 8;
+            this.label19.Text = "Levels";
+            // 
             // maskName_tbx
             // 
             this.maskName_tbx.Location = new System.Drawing.Point(167, 128);
@@ -848,22 +864,6 @@
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Process Tiles";
             this.tabPage2.UseVisualStyleBackColor = true;
-            // 
-            // label19
-            // 
-            this.label19.AutoSize = true;
-            this.label19.Location = new System.Drawing.Point(55, 181);
-            this.label19.Name = "label19";
-            this.label19.Size = new System.Drawing.Size(41, 12);
-            this.label19.TabIndex = 8;
-            this.label19.Text = "Levels";
-            // 
-            // maskLevels_tbx
-            // 
-            this.maskLevels_tbx.Location = new System.Drawing.Point(167, 178);
-            this.maskLevels_tbx.Name = "maskLevels_tbx";
-            this.maskLevels_tbx.Size = new System.Drawing.Size(324, 21);
-            this.maskLevels_tbx.TabIndex = 9;
             // 
             // Form1
             // 
