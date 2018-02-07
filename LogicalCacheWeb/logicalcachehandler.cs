@@ -40,7 +40,7 @@ namespace LogicalCacheWeb
                     int level = int.Parse(components[3]);
                     int row = int.Parse(components[4]);
                     int column = int.Parse(components[5]);
-                    logCache.GetTile(level, row, column,context.Response.OutputStream);
+                    logCache.GetLogicalCacheTile(level, row, column,context.Response.OutputStream);
                     context.Response.ContentType = "image/png";
                 }
             }

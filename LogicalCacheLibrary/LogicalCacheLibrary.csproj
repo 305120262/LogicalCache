@@ -79,6 +79,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CacheInfo.cs" />
+    <Compile Include="CacheSchema.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="LogicalCache.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

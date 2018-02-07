@@ -13,6 +13,7 @@ using System.Drawing.Drawing2D;
 using NetTopologySuite.IO;
 using GeoAPI.Geometries;
 using GeoAPI;
+using NetTopologySuite;
 
 namespace LogicalCacheLibrary
 {
@@ -27,53 +28,26 @@ namespace LogicalCacheLibrary
 
     public class LogicalCache
     {
-        const int BUNDLX_MAXIDX = 128;
-        const int COMPACT_CACHE_HEADER_LENGTH = 64;
-        const String BUNDLE_EXT = ".bundle";
+
         public int r, g, b = 0;
         public int h_max, w_max, h_min, w_min = 0;
         public string mask_name = "";
-        public string cache_root_folder = "";
         public TileCheckMode check_mode = TileCheckMode.Whole;
         public Configuration config;
         public ConnectionMultiplexer redisConnection;
+        public CacheSchema schema;
+
+        private const int BUNDLX_MAXIDX = 128;
+        private const int COMPACT_CACHE_HEADER_LENGTH = 64;
+        private const String BUNDLE_EXT = ".bundle";
         private string redisConnectionString;
+        private Dictionary<string,CacheInfo> rawCaches = new Dictionary<string, CacheInfo>();
+        private CacheInfo currentCache;
 
-
-
-        public String BuildBundleFilePath(string pathToCacheRoot, int zoom, int row, int col)
+        //Get Tile
+        public byte[] GetTileBytes( int level, int row, int col)
         {
-            StringBuilder bundlePath = new StringBuilder(pathToCacheRoot + @"\_alllayers");
-
-            int baseRow = (row / BUNDLX_MAXIDX) * BUNDLX_MAXIDX;
-            int baseCol = (col / BUNDLX_MAXIDX) * BUNDLX_MAXIDX;
-
-            String zoomStr = zoom.ToString();
-            if (zoomStr.Length < 2)
-                zoomStr = "0" + zoomStr;
-
-            StringBuilder rowStr = new StringBuilder(baseRow.ToString("X"));
-            StringBuilder colStr = new StringBuilder(baseCol.ToString("X"));
-
-            // column and rows are at least 4 characters long
-            const int padding = 4;
-
-            while (colStr.Length < padding)
-                colStr.Insert(0, "0");
-
-            while (rowStr.Length < padding)
-                rowStr.Insert(0, "0");
-
-            if (!pathToCacheRoot.EndsWith(Path.DirectorySeparatorChar.ToString()))
-                bundlePath.Append(Path.DirectorySeparatorChar);
-            bundlePath.Append("L").Append(zoomStr).Append(Path.DirectorySeparatorChar).Append("R").Append(rowStr.ToString().ToLower())
-                .Append("C").Append(colStr.ToString().ToLower()).Append(BUNDLE_EXT);
-
-            return bundlePath.ToString();
-        }
-
-        public byte[] GetTileBytes(string bundleFile, int zoom, int row, int col)
-        {
+            string bundleFile = BuildBundleFilePath(currentCache.Root, level, row, col);
             int index = BUNDLX_MAXIDX * (row % BUNDLX_MAXIDX) + (col % BUNDLX_MAXIDX);
             using (FileStream source = File.OpenRead(bundleFile))
             {
@@ -104,7 +78,75 @@ namespace LogicalCacheLibrary
 
         }
 
-        //To-do
+        private byte[] GetTileBytes(string pathToCacheRoot, int level, int row, int col)
+        {
+            string bundleFile = BuildBundleFilePath(pathToCacheRoot, level, row, col);
+            if(!File.Exists(bundleFile))
+            {
+                return null;
+            }
+            int index = BUNDLX_MAXIDX * (row % BUNDLX_MAXIDX) + (col % BUNDLX_MAXIDX);
+            using (FileStream source = File.OpenRead(bundleFile))
+            {
+
+                BinaryReader reader = new BinaryReader(source);
+
+                source.Seek((index * 8) + COMPACT_CACHE_HEADER_LENGTH, SeekOrigin.Begin);
+
+                byte[] offsetAndSize = new byte[8];
+                reader.Read(offsetAndSize, 0, 8);
+
+                byte[] offsetBytes = new byte[8];
+                Buffer.BlockCopy(offsetAndSize, 0, offsetBytes, 0, 5);
+                long offset = BitConverter.ToUInt32(offsetBytes, 0);
+
+                byte[] sizeBytes = new byte[4];
+                Buffer.BlockCopy(offsetAndSize, 5, sizeBytes, 0, 3);
+                int size = BitConverter.ToInt32(sizeBytes, 0);
+
+                if (size == 0)
+                    return null;
+
+                source.Seek(offset, SeekOrigin.Begin);
+                byte[] tile = new byte[size];
+                reader.Read(tile, 0, size);
+                return tile;
+            }
+
+        }
+
+        private String BuildBundleFilePath(string pathToCacheRoot, int level, int row, int col)
+        {
+            StringBuilder bundlePath = new StringBuilder(pathToCacheRoot + @"\_alllayers");
+
+            int baseRow = (row / BUNDLX_MAXIDX) * BUNDLX_MAXIDX;
+            int baseCol = (col / BUNDLX_MAXIDX) * BUNDLX_MAXIDX;
+
+            String zoomStr = level.ToString();
+            if (zoomStr.Length < 2)
+                zoomStr = "0" + zoomStr;
+
+            StringBuilder rowStr = new StringBuilder(baseRow.ToString("X"));
+            StringBuilder colStr = new StringBuilder(baseCol.ToString("X"));
+
+            // column and rows are at least 4 characters long
+            const int padding = 4;
+
+            while (colStr.Length < padding)
+                colStr.Insert(0, "0");
+
+            while (rowStr.Length < padding)
+                rowStr.Insert(0, "0");
+
+            if (!pathToCacheRoot.EndsWith(Path.DirectorySeparatorChar.ToString()))
+                bundlePath.Append(Path.DirectorySeparatorChar);
+            bundlePath.Append("L").Append(zoomStr).Append(Path.DirectorySeparatorChar).Append("R").Append(rowStr.ToString().ToLower())
+                .Append("C").Append(colStr.ToString().ToLower()).Append(BUNDLE_EXT);
+
+            return bundlePath.ToString();
+        }
+
+        //Process Tiles
         public async void ProcessTiles(string SrcCacheRoot,string DestCacheRoot, string mask,string config)
         {
             Dictionary<string, List<TileInfo>> bundles = new Dictionary<string, List<TileInfo>>();
@@ -220,7 +262,7 @@ namespace LogicalCacheLibrary
             }
         }
 
-        public string ProcessBundle(Object paras)
+        private string ProcessBundle(Object paras)
         {
             var p = paras as ProcessTilesParameters;
             if(!File.Exists(p.destBundle))
@@ -257,7 +299,7 @@ namespace LogicalCacheLibrary
 
                             ImageFactory imgfac = new ImageFactory(true);
                             imgfac.Load(tile_src);
-                            imgfac = ProcessTile(imgfac, p.config);
+                            imgfac = ProcessTile(imgfac, p.config, tile);
                             using (MemoryStream stream  = new MemoryStream())
                             { 
                                 imgfac.Save(stream);
@@ -288,9 +330,9 @@ namespace LogicalCacheLibrary
                                 writer.Write(BitConverter.GetBytes(size_dest));
                                 writer.Write(stream.ToArray());
 
-                                //Image img = Image.FromStream(stream);
-                                //string output = string.Format("L{0}R{1}C{2}", tile.Level, tile.Row, tile.Column);
-                                //img.Save(@"D:\Research\瓦片读取研究\test\" + output + ".png");
+                                Image img = Image.FromStream(stream);
+                                string output = string.Format("L{0}R{1}C{2}", tile.Level, tile.Row, tile.Column);
+                                img.Save(@"D:\Research\瓦片读取研究\test\" + output + ".png");
                             }
                         }
                        
@@ -301,7 +343,107 @@ namespace LogicalCacheLibrary
             return "";
         }
 
+        private ImageFactory ProcessTile(ImageFactory tile, IList<Processor_conf> processors, TileInfo tileInfo)
+        {
+            foreach (var processor in processors)
+            {
+                if (processor.type == "Watermark")
+                {
+                    tile = tile.Watermark(new ImageProcessor.Imaging.TextLayer() { Text = processor.parameters["text"] });
+                }
+                else if(processor.type == "Fill")
+                {
+                    Image fill = new Bitmap(tile.Image.Width, tile.Image.Height);
+                    Graphics graphics = Graphics.FromImage(fill);
+                    int alpha = int.Parse(processor.parameters["alpha"]);
+                    int r = int.Parse(processor.parameters["red"]);
+                    int g = int.Parse(processor.parameters["green"]);
+                    int b = int.Parse(processor.parameters["blue"]);
+                    Color color = Color.FromArgb(alpha, r, g, b);
+                    SolidBrush bgBrush = new SolidBrush(color);
+                    graphics.FillRectangle(bgBrush, 0, 0, tile.Image.Width, tile.Image.Height);
+                    graphics.Save();
+                    tile = tile.Overlay(new ImageProcessor.Imaging.ImageLayer() { Image = fill });
+                }
+                else if (processor.type == "Clip")
+                {
+                    double resolution = 0;
+                    foreach(var lod in schema.LODs)
+                    {
+                        if(lod.Item1==tileInfo.Level)
+                        {
+                            resolution = lod.Item3;
+                        }
+                    }
+                    string shapefile = processor.parameters["region"];
+                    IGeometryFactory geofac = GeometryServiceProvider.Instance.CreateGeometryFactory();
+                    ShapefileReader reader = new ShapefileReader(shapefile);
+                    IGeometryCollection shps = reader.ReadAll();
+                    foreach (IGeometry shp in shps.Geometries)
+                    {
+                        var loc = schema.GetTileEnvelop(tileInfo);
+                        Envelope env = new Envelope(loc.Item1, loc.Item2, loc.Item3,loc.Item4);
+                        if (shp.Intersects(geofac.ToGeometry(env)))
+                        {
+                            IGeometry overlap = shp.Intersection(geofac.ToGeometry(env));
+                            GraphicsPath path = new GraphicsPath();
+                            PointF[] points = overlap.Coordinates.Select(c => new PointF((float)((c.X - loc.Item1)/resolution), (float)((loc.Item4 - c.Y)/resolution))).ToArray();
+                            path.AddPolygon(points);
 
+                            Graphics graphics = Graphics.FromImage(tile.Image);
+                            graphics.ExcludeClip(new Region(path));
+                            SolidBrush bgBrush = new SolidBrush(Color.Transparent);
+                            graphics.FillRectangle(bgBrush, 0, 0, tile.Image.Width, tile.Image.Height);
+                            //graphics.DrawImageUnscaled(tile.Image, 0, 0);
+                            graphics.Save();
+                        }
+
+                    }
+
+
+                }
+            }
+            return tile;
+        }
+
+        private static void MatrixBlend(string image1path, string image2path, byte alpha)
+        {
+            // for the matrix the range is 0.0 - 1.0
+            float alphaNorm = (float)alpha / 255.0F;
+            using (Bitmap image1 = (Bitmap)Bitmap.FromFile(image1path))
+            {
+                using (Bitmap image2 = (Bitmap)Bitmap.FromFile(image2path))
+                {
+                    // just change the alpha
+                    ColorMatrix matrix = new ColorMatrix(new float[][]{
+                new float[] {1F, 0, 0, 0, 0},
+                new float[] {0, 1F, 0, 0, 0},
+                new float[] {0, 0, 1F, 0, 0},
+                new float[] {0, 0, 0, alphaNorm, 0},
+                new float[] {0, 0, 0, 0, 1F}});
+
+                    ImageAttributes imageAttributes = new ImageAttributes();
+                    imageAttributes.SetColorMatrix(matrix);
+
+                    using (Graphics g = Graphics.FromImage(image1))
+                    {
+                        g.CompositingMode = CompositingMode.SourceOver;
+                        g.CompositingQuality = CompositingQuality.HighQuality;
+
+                        g.DrawImage(image2,
+                            new Rectangle(0, 0, image1.Width, image1.Height),
+                            0,
+                            0,
+                            image2.Width,
+                            image2.Height,
+                            GraphicsUnit.Pixel,
+                            imageAttributes);
+                    }
+                }
+            }
+        }
+
+        //Get LRC From Bundle File Path
         public void GetLRCFromBundleFilePath(string bundlefile, out int level, out int row, out int column)
         {
             level = 0;
@@ -314,6 +456,7 @@ namespace LogicalCacheLibrary
 
         }
 
+        //Chesk Tiles
         public string CheckTiles(string pathToCacheRoot, TileCheckMode mode)
         {
             var zooms = Directory.EnumerateDirectories(pathToCacheRoot + @"\_alllayers\");
@@ -647,7 +790,7 @@ namespace LogicalCacheLibrary
             }
         }
 
-
+        //Export Tile
         public bool SaveImage(byte[] data, string filepath)
         {
             using (MemoryStream stream = new MemoryStream(data))
@@ -664,22 +807,36 @@ namespace LogicalCacheLibrary
             return true;
         }
 
+        //Connect Redis
         public void ConnectRegisterDB(string path)
         {
             redisConnectionString = path;
             redisConnection = ConnectionMultiplexer.Connect(path);
         }
 
+        //Load Configuration
         public void LoadConfig(string configuration)
         {
+            GeometryServiceProvider.Instance = new NetTopologySuite.NtsGeometryServices();
             using (StreamReader reader = new StreamReader(configuration))
             {
                 config = JsonConvert.DeserializeObject<Configuration>(reader.ReadToEnd());
+                schema = new CacheSchema(config.schema);
                 ConnectRegisterDB(config.registerdb);
+                rawCaches.Clear();
+                foreach(var cache_conf in config.caches)
+                {
+                    if(!rawCaches.ContainsKey(cache_conf.name))
+                    {
+                        CacheInfo cache = new CacheInfo(cache_conf.path);
+                        rawCaches.Add(cache_conf.name, cache);
+                    }
+                }
             }
         }
 
-        public void GetTile(int level, int row, int column, Stream output)
+        //Get Tile
+        public void GetLogicalCacheTile(int level, int row, int column, Stream output)
         {
             //Check is in a mask
             //if in , fetech tiles by mask algorithem, then return image, then do processor
@@ -691,15 +848,14 @@ namespace LogicalCacheLibrary
                 {
                     if (picker.type == "First")
                     {
-                        foreach (var cache in config.caches)
+                        foreach (var rawCache in rawCaches)
                         {
-                            if (redisClient.SetContains(cache.name, tileID))
+                            byte[] tile = GetTileBytes(rawCache.Value.Root, level, row, column);
+                            if (tile != null)
                             {
-                                string bundle = BuildBundleFilePath(cache.path, level, row, column);
-                                byte[] tile = GetTileBytes(bundle, level, row, column);
                                 ImageFactory imgfac = new ImageFactory();
                                 imgfac.Load(tile);
-                                ProcessTile(imgfac, picker.processors).Save(output);
+                                ProcessTile(imgfac, config.processors, new TileInfo() { Level = level, Row = row, Column = column }).Save(output);
                                 return;
                             }
                         }
@@ -708,13 +864,11 @@ namespace LogicalCacheLibrary
                     {
                         bool blend_flag = false;
                         ImageFactory imgfac = new ImageFactory();
-                        for (int i = config.caches.Count - 1; i >= 0; i--)
+                        foreach (var rawCache in rawCaches.Reverse())
                         {
-                            var cache = config.caches[i];
-                            if (redisClient.SetContains(cache.name, tileID))
+                            byte[] tile = GetTileBytes(rawCache.Value.Root, level, row, column);
+                            if (tile != null)
                             {
-                                string bundle = BuildBundleFilePath(cache.path, level, row, column);
-                                byte[] tile = GetTileBytes(bundle, level, row, column);
                                 Bitmap tile_image = new Bitmap(new MemoryStream(tile));
                                 if (!blend_flag)
                                 {
@@ -723,76 +877,39 @@ namespace LogicalCacheLibrary
                                 }
                                 else
                                 {
-                                    imgfac.Overlay(new ImageProcessor.Imaging.ImageLayer() { Image = tile_image });
+                                    imgfac.Overlay(new ImageProcessor.Imaging.ImageLayer() { Image = tile_image});
                                 }
-
                             }
                         }
-                        ProcessTile(imgfac, picker.processors).Save(output);
+                        ProcessTile(imgfac, picker.processors, new TileInfo() { Level = level, Row = row, Column = column}).Save(output);
                         return;
                     }
                 }
-                continue;
             }
 
-            //if not in, return blank
+            //if not in mask, return first
+            foreach(var rawCache in rawCaches)
+            {
+                byte[] tile = GetTileBytes(rawCache.Value.Root, level, row, column);
+                if(tile!=null)
+                {
+                    ImageFactory imgfac = new ImageFactory();
+                    imgfac.Load(tile);
+                    ProcessTile(imgfac, config.processors, new TileInfo() { Level = level, Row = row, Column = column }).Save(output);
+                    return;
+                }
+            }
+
+            //if not tile, return blank
             Bitmap bitmap = new Bitmap(256, 256);
             Graphics graphics = Graphics.FromImage(bitmap);
             graphics.FillRectangle(Brushes.White, 0, 0, 256, 256);
             bitmap.Save(output, ImageFormat.Png);
+            return;
         }
 
-        private ImageFactory ProcessTile(ImageFactory tile, IList<Processor_conf> processors)
-        {
-            foreach (var processor in processors)
-            {
-                if (processor.type == "Watermark")
-                {
-                    tile = tile.Watermark(new ImageProcessor.Imaging.TextLayer() { Text = processor.parameters["text"] });
-                }
-            }
-            return tile;
-        }
-
-
-        private static void MatrixBlend(string image1path, string image2path, byte alpha)
-        {
-            // for the matrix the range is 0.0 - 1.0
-            float alphaNorm = (float)alpha / 255.0F;
-            using (Bitmap image1 = (Bitmap)Bitmap.FromFile(image1path))
-            {
-                using (Bitmap image2 = (Bitmap)Bitmap.FromFile(image2path))
-                {
-                    // just change the alpha
-                    ColorMatrix matrix = new ColorMatrix(new float[][]{
-                new float[] {1F, 0, 0, 0, 0},
-                new float[] {0, 1F, 0, 0, 0},
-                new float[] {0, 0, 1F, 0, 0},
-                new float[] {0, 0, 0, alphaNorm, 0},
-                new float[] {0, 0, 0, 0, 1F}});
-
-                    ImageAttributes imageAttributes = new ImageAttributes();
-                    imageAttributes.SetColorMatrix(matrix);
-
-                    using (Graphics g = Graphics.FromImage(image1))
-                    {
-                        g.CompositingMode = CompositingMode.SourceOver;
-                        g.CompositingQuality = CompositingQuality.HighQuality;
-
-                        g.DrawImage(image2,
-                            new Rectangle(0, 0, image1.Width, image1.Height),
-                            0,
-                            0,
-                            image2.Width,
-                            image2.Height,
-                            GraphicsUnit.Pixel,
-                            imageAttributes);
-                    }
-                }
-            }
-        }
-
-        public List<string> GetRegisterCaches()
+        //Get Masks
+        public List<string> GetMasks()
         {
             List<string> keys = new List<string>();
             foreach (var key in redisConnection.GetServer(redisConnectionString).Keys())
@@ -802,31 +919,31 @@ namespace LogicalCacheLibrary
             return keys;
         }
 
-        public void BuildMask(string pathToCacheRoot, string shapefile, string maskName, string position,List<int> levels)
+        //Build Mask
+        public void BuildMask(string shapefile, string maskName, string position,List<int> levels)
         {
             DropMask(maskName);
-            CacheInfo cache = new CacheInfo();
-            cache.LoadFromSchemaFile(pathToCacheRoot + @"\conf.xml");
+            GeometryServiceProvider.Instance = new NetTopologySuite.NtsGeometryServices();
+            IGeometryFactory geofac = GeometryServiceProvider.Instance.CreateGeometryFactory();
             ShapefileReader reader = new ShapefileReader(shapefile);
             IGeometryCollection shps = reader.ReadAll();
             foreach (IGeometry shp in shps.Geometries)
             {
-                foreach (var lod in cache.LODs.Reverse())
+                foreach (Tuple < int, double, double> lod in schema.LODs.Reverse<Tuple<int, double, double>>())
                 {
-                    if( !levels.Contains(lod.Value.Item1))
+                    if(levels.Count!=0 && !levels.Contains(lod.Item1))
                     {
                         continue;
                     }
-                    TileInfo tile_start = cache.GetTileInfoFromXY(lod.Key, shp.Envelope.Coordinates[0].X, shp.Envelope.Coordinates[0].Y);
-                    TileInfo tile_end = cache.GetTileInfoFromXY(lod.Key, shp.Envelope.Coordinates[2].X, shp.Envelope.Coordinates[2].Y);
+                    TileInfo tile_start = schema.GetTileInfoFromXY(lod.Item2, shp.Envelope.Coordinates[0].X, shp.Envelope.Coordinates[0].Y);
+                    TileInfo tile_end = schema.GetTileInfoFromXY(lod.Item2, shp.Envelope.Coordinates[2].X, shp.Envelope.Coordinates[2].Y);
                     int level = tile_start.Level;
                     for (int x = tile_start.Column; x <= tile_end.Column; x++)
                     {
                         for (int y = tile_end.Row; y <= tile_start.Row; y++)
                         {
-                            var loc = cache.GetTileEnvelop(level, y, x);
-                            Envelope env = new Envelope(loc.Item1, loc.Item2, loc.Item3, loc.Item4);
-                            IGeometryFactory geofac = GeometryServiceProvider.Instance.CreateGeometryFactory();
+                            var loc = schema.GetTileEnvelop(level, y, x);
+                            Envelope env = new Envelope(loc.Item1, loc.Item2, loc.Item3, loc.Item4); 
                             if (position == "Border")
                             {
                                 if (shp.Boundary.Intersects(geofac.ToGeometry(env)))
@@ -856,6 +973,7 @@ namespace LogicalCacheLibrary
 
         }
 
+        //Drop Mask
         public void DropMask(string name)
         {
             foreach (var key in redisConnection.GetServer(this.redisConnectionString).Keys())
@@ -863,10 +981,15 @@ namespace LogicalCacheLibrary
                 if (key.ToString() == name)
                 {
                     IDatabase redisClient = redisConnection.GetDatabase();
-                    redisClient.KeyDelete(key);
+                    redisClient.KeyDeleteAsync(key);
                 }
             }
         }
 
+        public void SetCurrentCache(string path)
+        {
+            currentCache = new CacheInfo(path);
+            schema = currentCache.Schema;
+        }
     }
 }

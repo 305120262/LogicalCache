@@ -25,14 +25,13 @@ namespace LogicalCacheDesktop
             InitializeComponent();
         }
 
+        //Export Tile
         private void button1_Click(object sender, EventArgs e)
         {
             int level=0, row=0, col=0;
             if (scale_tbx.Text!="" && x_tbx.Text != "" && y_tbx.Text != "")
             {
-                CacheInfo cache = new CacheInfo();
-                cache.LoadFromSchemaFile(this.cacheRoot_tbx.Text + @"\conf.xml");
-                TileInfo tile = cache.GetTileInfoFromXY(double.Parse(scale_tbx.Text), double.Parse(x_tbx.Text), double.Parse(y_tbx.Text));
+                TileInfo tile = logCache.schema.GetTileInfoFromXY(double.Parse(scale_tbx.Text), double.Parse(x_tbx.Text), double.Parse(y_tbx.Text));
                 level = tile.Level;
                 row = tile.Row;
                 col = tile.Column;
@@ -53,8 +52,7 @@ namespace LogicalCacheDesktop
                 col = components_int[2];
             }
 
-            string bundleFilePath = logCache.BuildBundleFilePath(cacheRoot_tbx.Text, level, row, col);
-            byte[] data = logCache.GetTileBytes(bundleFilePath, level, row, col);
+            byte[] data = logCache.GetTileBytes( level, row, col);
             if (data == null)
             {
                 MessageBox.Show("Tile Not Exist!");
@@ -136,15 +134,13 @@ namespace LogicalCacheDesktop
             }
         }
 
-        //Preview
+        //Preview Tile
         private void button5_Click(object sender, EventArgs e)
         {
             int level = 0, row = 0, col = 0;
             if (scale_tbx.Text != "" && x_tbx.Text != "" && y_tbx.Text != "")
             {
-                CacheInfo cache = new CacheInfo();
-                cache.LoadFromSchemaFile(this.cacheRoot_tbx.Text + @"\conf.xml");
-                TileInfo tile = cache.GetTileInfoFromXY(double.Parse(scale_tbx.Text), double.Parse(x_tbx.Text), double.Parse(y_tbx.Text));
+                TileInfo tile = logCache.schema.GetTileInfoFromXY(double.Parse(scale_tbx.Text), double.Parse(x_tbx.Text), double.Parse(y_tbx.Text));
                 level = tile.Level;
                 row = tile.Row;
                 col = tile.Column;
@@ -168,8 +164,7 @@ namespace LogicalCacheDesktop
                 row = components_int[1];
                 col = components_int[2];
             }
-            string bundleFilePath = logCache.BuildBundleFilePath(cacheRoot_tbx.Text, level, row, col);
-            byte[] data = logCache.GetTileBytes(bundleFilePath, level, row, col);
+            byte[] data = logCache.GetTileBytes( level, row, col);
             if(data==null)
             {
                 MessageBox.Show("Tile Not Exist!");
@@ -179,6 +174,7 @@ namespace LogicalCacheDesktop
             this.tile_picbox.Image = Image.FromStream(new MemoryStream(data));
         }
 
+        //Check Tile
         private void button6_Click(object sender, EventArgs e)
         {
             logCache.mask_name = this.maskName_tbx.Text;
@@ -188,17 +184,18 @@ namespace LogicalCacheDesktop
 
         private void button10_Click(object sender, EventArgs e)
         {
-            maskName_lstbox.DataSource = logCache.GetRegisterCaches();
+            maskName_lstbox.DataSource = logCache.GetMasks();
         }
 
+        //Connect Mask DB
         private void button11_Click(object sender, EventArgs e)
         {
             try
             {
                 logCache.ConnectRegisterDB(this.redisSvr_tbx.Text);
                 MessageBox.Show("Connected.");
-                maskName_lstbox.DataSource = logCache.GetRegisterCaches();
-                maskName_cbx.DataSource = logCache.GetRegisterCaches();
+                maskName_lstbox.DataSource = logCache.GetMasks();
+                maskName_cbx.DataSource = logCache.GetMasks();
             }
             catch
             { }
@@ -207,9 +204,12 @@ namespace LogicalCacheDesktop
         //Build Mask
         private void button8_Click(object sender, EventArgs e)
         {
-            List<int> levels = new List<string>(maskLevels_tbx.Text.Split(',')).ConvertAll(new Converter<string, int>(Str2int));
-            
-            logCache.BuildMask(this.cacheRoot_tbx.Text,this.maskShape_tbx.Text, this.maskName_tbx.Text, this.maskPosition_cbx.Text,levels);
+            List<int> levels = new List<int>();
+            if (maskLevels_tbx.Text!="")
+            {
+                levels= new List<string>(maskLevels_tbx.Text.Split(',')).ConvertAll(new Converter<string, int>(Str2int));
+            }
+            logCache.BuildMask(this.maskShape_tbx.Text, this.maskName_tbx.Text, this.maskPosition_cbx.Text,levels);
             MessageBox.Show("Completed.");
         }
 
@@ -229,9 +229,10 @@ namespace LogicalCacheDesktop
             logCache.ProcessTiles(cacheRoot_tbx.Text,destCacheRoot_tbx.Text,maskName_cbx.Text,processor_tbx.Text);
         }
 
+        //Set Current Cache
         private void cacheRoot_tbx_TextChanged(object sender, EventArgs e)
         {
-            logCache.cache_root_folder = this.cacheRoot_tbx.Text;
+            logCache.SetCurrentCache(this.cacheRoot_tbx.Text);
         }
 
         private void button12_Click(object sender, EventArgs e)
@@ -240,7 +241,12 @@ namespace LogicalCacheDesktop
             {
                 logCache.DropMask(i.ToString());
             }
-            maskName_lstbox.DataSource = logCache.GetRegisterCaches();
+            maskName_lstbox.DataSource = logCache.GetMasks();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            logCache.SetCurrentCache(this.cacheRoot_tbx.Text);
         }
     }
 }

@@ -11,6 +11,8 @@ namespace LogicalCacheLibrary
         public IList<Cache_conf> caches;
         public IList<Picker_conf> pickers;
         public string registerdb;
+        public string schema;
+        public IList<Processor_conf> processors;
     }
 
     public class Cache_conf
@@ -32,5 +34,6 @@ namespace LogicalCacheLibrary
         public string type;
         public Dictionary<string,string> parameters;
     }
+
 
 }
